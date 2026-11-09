@@ -32,4 +32,4 @@ Kate Frankland
 
 “NOAA Coral Reef Watch Daily Global 5Km Satellite Coral Bleaching Heat Stress SST Anomaly Product (Version 3.1).” Coralreefwatch.Noaa.Gov, https://coralreefwatch.noaa.gov/product/5km/index_5km_ssta.php. Accessed 6 Nov. 2026.
 
-“Gridded Bathymetry Data (General Bathymetric Chart of the Oceans)..” Gebco, https://www.gebco.net/data_and_products/gridded_bathymetry_data/. Accessed 6 Nov. 2026.
+“Gridded Bathymetry Data (General Bathymetric Chart of the Oceans)..” Gebco, https://www.gebco.net/data_and_products/gridded_bathymetry_data/. Accessed 6 Nov. 2026. 
