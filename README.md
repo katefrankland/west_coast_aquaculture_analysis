@@ -2,10 +2,13 @@
 
 
 **Purpose**
+
 This repository contains data, code, and maps that help to identify suitable marine aquaculture areas within West Coast EEZs based on sea surface temperature, bathymetry, and suitability criteria.
 
 
 **Repository Structure**
+
+```{r}
 
 west_coast_aquaculture_analysis
 ├── data
@@ -22,6 +25,8 @@ west_coast_aquaculture_analysis
 ├── homework3.pdf
 ├── homework3.qmd
 └── README.md
+```
+
 
 **Authors**
 
