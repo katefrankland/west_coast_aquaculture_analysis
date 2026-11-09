@@ -208,39 +208,6 @@ head(ez_summary)
 ```
 
 ## Oyster Map Creation 
-```{r}
-# Map creation
-
-oyster_map <- tm_basemap("OpenStreetMap") + 
-  tm_shape(ez_summary) +
-  tm_polygons(
-    fill = "suitable_km2",
-    fill.scale = tm_scale_continuous(
-      values = "brewer.blues"
-    ),
-    fill_alpha = 0.6,
-    fill.legend = tm_legend(
-      title = "Suitable area (km2)",
-      position = tm_pos_out("right", "center"),
-      width = 5, 
-      height = 5
-    ),
-    col = "black"
-  ) +
-  tm_graticules() +
-  tm_scalebar(position = c("left", "bottom"), text.size = 0.7) + 
-  tm_compass(position = c("right", "top")) +
-  tm_title("Oyster Suitability Analysis for West Coast EEZs", size = 0.5)
-
-
-
-
-# Display map
-oyster_map
-
-```
-
-
 
 ```{r}
 # Map creation
@@ -268,7 +235,7 @@ oyster_map <- tm_basemap("OpenStreetMap") +
     col = "black"
   ) + 
   tm_graticules() + 
-  tm_scalebar(position = c("left", "bottom"), text.size = 0.7) + 
+  tm_scalebar(position = c("left", "bottom"), text.size = 0.5) + 
   tm_compass(position = c("right", "top")) + 
   tm_options(components.autoscale = FALSE) + 
   tm_title("Oyster Suitability Analysis for West Coast EEZs", size = 1)
@@ -428,17 +395,14 @@ scallop_map <- tm_basemap("OpenStreetMap") +
     col = "black"
   ) + 
   tm_graticules() + 
-  tm_scalebar(position = c("left", "bottom"), text.size = 0.7) + 
+  tm_scalebar(position = c("left", "bottom"), text.size = 0.5) + 
   tm_compass(position = c("right", "top")) + 
   tm_options(components.autoscale = FALSE) + 
-  tm_title("Pacific Calico Scallop Suitability Analysis for West Coast EEZs", 
-    size = 0.5
+  tm_title("Pacific Calico Scallop Suitability Analysis for West Coast EEZs", size = 1
   )
 
 # Display map
-
 scallop_map
-
 ```
 
 
