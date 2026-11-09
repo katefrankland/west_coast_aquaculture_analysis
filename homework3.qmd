@@ -229,7 +229,7 @@ oyster_map <- tm_basemap("OpenStreetMap") +
     fill.legend = tm_legend(
       title = "Suitable area (km2)", 
       position = tm_pos_out("right", "center"), 
-      width = 15, 
+      width = 12, 
       height = 15
     ),
     col = "black"
@@ -389,7 +389,7 @@ scallop_map <- tm_basemap("OpenStreetMap") +
     fill.legend = tm_legend(
       title = "Suitable area (km2)", 
       position = tm_pos_out("right", "center"), 
-      width = 15, 
+      width = 12, 
       height = 15
     ),
     col = "black"
