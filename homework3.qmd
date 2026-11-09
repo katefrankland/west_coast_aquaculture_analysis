@@ -1,0 +1,417 @@
+---
+title: "EDS 223 Homework 3: West Coast Aquaculture Analysis"
+date: "2026-11-4"
+author: "Kate Frankland"
+format:
+  pdf:
+    toc: true
+    number-section: true
+execute:
+  warning: false
+  message: false
+  echo: true
+---
+
+## Setup
+```{r}
+# Loading packages
+library(terra) # raster handling
+library(tidyverse)
+library(tmap) # map making
+library(kableExtra) # table formatting
+library(spData) # spatial data
+library(spDataLarge) # spatial data
+library(geodata) # spatial data
+library(sf)
+```
+
+
+```{r}
+# Shapefile for the West Coast EEZ 
+
+ez_data <- st_read("data/wc_regions_clean.shp")
+
+# Bathymetry Raster 
+
+bathymetry <- rast("data/depth.tif")
+```
+
+```{r}
+#SST rasters (combine SSt rasters into a raster stack)
+
+ann_avg_sst_2008 <- rast("data/average_annual_sst_2008.tif")
+ann_avg_sst_2009 <- rast("data/average_annual_sst_2009.tif")
+ann_avg_sst_2010 <- rast("data/average_annual_sst_2010.tif")
+ann_avg_sst_2011 <- rast("data/average_annual_sst_2011.tif")
+ann_avg_sst_2012 <- rast("data/average_annual_sst_2012.tif")
+
+# test class of raster objects
+class(ann_avg_sst_2008)
+```
+
+```{r}
+# Combine rasters into a stack 
+raster_stack <- c(
+    ann_avg_sst_2008, 
+    ann_avg_sst_2009, 
+    ann_avg_sst_2010, 
+    ann_avg_sst_2011, 
+    ann_avg_sst_2012)
+```
+
+
+```{r}
+#Checking the CRS 
+st_crs(ez_data) == st_crs(bathymetry)
+st_crs(ez_data) == st_crs(raster_stack)
+st_crs(bathymetry) == st_crs(raster_stack)
+
+```
+
+##Process data
+Next, we need to process the SST and depth data so that they can be combined. In this case the SST and depth data have slightly different resolutions, extents, and positions.
+```{r}
+# find the mean SST from 2008-2012 (e.g. create single raster of average SST)
+
+sst_mean <- mean(raster_stack, na.rm = TRUE) 
+print(sst_mean)
+
+```
+
+```{r}
+# convert average SST from Kelvin to Celsius hint: subtract by 273.15
+sst_celsius <- (sst_mean - 273.15)
+print(sst_celsius) 
+
+# crop depth raster to match the extent of the SST raster 
+cropped_depth <- crop(bathymetry, sst_celsius)
+```
+
+```{r}
+# note: the resolutions of the SST and depth data do not match resample the depth data to match the resolution of the SST data using the bilinear method approach check that the depth and SST match in resolution, extent, and coordinate reference system hint: can the rasters be stacked?
+
+
+resampled_depth <- resample(cropped_depth, sst_celsius, method = "bilinear")
+
+# Vverify matching
+cat("After resampling:\n")
+cat("Resolutions match:", all(res(resampled_depth) == res(sst_celsius)), "\n")
+cat("Origins match:    ", all(round(origin(resampled_depth), 8) == round(origin(sst_celsius), 8)), "\n")
+cat("Extents match:    ", ext(resampled_depth) == ext(sst_celsius), "\n")
+
+
+```
+
+## Find Suitable Locations 
+- To find suitable locations for marine aquaculture, we’ll need to find locations that are suitable in terms of both SST and depth.
+- reclassify SST and depth data into locations that are suitable for oysters
+-  hint: set suitable values to 1 and unsuitable values to 0
+- find locations that satisfy both SST and depth conditions
+
+```{r}
+
+# Define a reclassification matrix
+sst_rcl <- matrix(c(-Inf, 11, 0, # unsuitable 
+                11, 30, 1,  # suitable 
+                30, Inf, 0), # unsuitable
+              ncol = 3, 
+              byrow = TRUE)
+
+# Apply the matrix to reclassify the raster, making all cells 0 or 1 or 2
+sst_suitability <- classify(sst_celsius, rcl = sst_rcl, right = FALSE) 
+
+```
+
+
+
+```{r}
+# Reclassify depth for oysters
+
+depth_rcl <- matrix(
+  c(
+    -Inf, -70, 0,  # Unsuitable
+    -70, 0, 1,     # Suitable
+    0, Inf, 0      # Unsuitable
+  ),
+  ncol = 3,
+  byrow = TRUE
+)
+
+# Project and resample depth to match SST raster
+depth_projected <- project(
+  resampled_depth,
+  sst_celsius,
+  method = "bilinear"
+)
+
+# Reclassify projected depth raster
+depth_suitability <- classify(
+  depth_projected,
+  rcl = depth_rcl,
+  right = FALSE
+)
+
+# Check that CRS matches
+same.crs(sst_suitability, depth_suitability)
+
+# Combine the rasters
+suitable_zones <- c(
+  sst_suitability,
+  depth_suitability
+)
+
+# Multiply suitable zones to find suitable locations
+suitable_locations <- lapp(
+  suitable_zones,
+  fun = function(sst, depth) sst * depth
+)
+
+```
+
+
+##Determine the most suitable EEZ
+- We want to determine the total suitable area within each EEZ in order to rank zones by priority. To do so, we need to find the total area of suitable locations within each EEZ.
+
+```{r}
+# select suitable cells within West Coast EEZs
+eez_rast <- rasterize(ez_data, suitable_locations, field = "rgn_id")
+
+# find area of grid cells
+cell_size <- cellSize(suitable_locations, unit = "km")
+
+# Only want the suitable cells 
+suitable_area <- suitable_locations * cell_size
+
+# find the total suitable area within each EEZ
+# hint: it might be helpful to rasterize the EEZ data
+
+# Calculate suitable area by EEZ
+eez_suitable <- zonal(
+  suitable_area,
+  eez_rast,
+  fun = "sum",
+  na.rm = TRUE
+)
+
+# Rename suitable area column
+eez_suitable <- eez_suitable |>
+  rename(
+    suitable_km2 = lyr1
+  )
+
+# Join suitable area to EEZ polygons
+ez_summary <- ez_data |>
+  left_join(eez_suitable, by = "rgn_id")
+
+# Check results
+head(ez_summary)
+```
+
+## Oyster Map Creation 
+```{r}
+# Map creation
+
+oyster_map <- tm_basemap("OpenStreetMap") + 
+  tm_shape(ez_summary) +
+  tm_polygons(
+    fill = "suitable_km2",
+    fill.scale = tm_scale_continuous(
+      values = "brewer.blues"
+    ),
+    fill_alpha = 0.6,
+    fill.legend = tm_legend(
+      title = "Suitable area (km2)",
+      position = tm_pos_out("right", "center")
+    ),
+    col = "black"
+  ) +
+  tm_graticules() +
+  tm_scalebar(position = c("left", "bottom"), text.size = 0.7) + 
+  tm_compass(position = c("right", "top")) +
+  tm_title("Oyster Suitability Analysis for West Coast EEZs", size = 1.5)
+
+
+# Display map
+oyster_map
+```
+
+
+Oyster Map Interpretation: The oyster map shows suitable habitat across the West Coast EEZs, primarily Southern California and parts of Washington State. Based on the selected criteria, these regions have the most potential for oyster aquaculture success. 
+
+#__________________________________________________________________________________________________________
+
+## Suitability for the Pacific Calico Scallop 
+
+- sealifebase link: https://www.sealifebase.ca/country/CountrySpeciesSummary.php?Country=US+America+%28contiguous+states%29&genusname=Argopecten&speciesname=ventricosus
+
+
+```{r}
+
+# Suitability for the Pacific Calico Scallop
+
+# Pacific calico scallop suitability parameters
+# Depth range: 0-180 meters below sea level
+
+# Reclassify SST for Pacific calico scallop
+
+scallop_sst_rcl <- matrix(
+  c(
+    -Inf, 21, 0,       # Unsuitable
+    21, 31, 1,         # Suitable
+    31, Inf, 0         # Unsuitable
+  ),
+  ncol = 3,
+  byrow = TRUE
+)
+
+scallop_sst_suitability <- classify(
+  sst_celsius,
+  rcl = scallop_sst_rcl,
+  right = FALSE
+)
+
+# Project and resample depth to match SST raster
+
+scallop_depth_projected <- project(
+  resampled_depth,
+  sst_celsius,
+  method = "bilinear"
+)
+
+# Reclassify depth for Pacific calico scallop
+
+scallop_depth_rcl <- matrix(
+  c(
+    -Inf, -180, 0,    # Unsuitable
+    -180, 0, 1,       # Suitable
+    0, Inf, 0         # Unsuitable
+  ),
+  ncol = 3,
+  byrow = TRUE
+)
+
+scallop_depth_suitability <- classify(
+  scallop_depth_projected,
+  rcl = scallop_depth_rcl,
+  right = FALSE
+)
+
+# Check that CRS matches
+
+same.crs(
+  scallop_sst_suitability,
+  scallop_depth_suitability
+)
+
+# Combine the rasters
+
+scallop_suitable_zones <- c(
+  scallop_sst_suitability,
+  scallop_depth_suitability
+)
+
+# Multiply suitable zones to find suitable locations
+
+scallop_suitable_locations <- lapp(
+  scallop_suitable_zones,
+  fun = function(sst, depth) sst * depth
+)
+
+
+# Select suitable cells within West Coast EEZs
+
+scallop_eez_rast <- rasterize(
+  ez_data,
+  scallop_suitable_locations,
+  field = "rgn_id"
+)
+
+# Find area of grid cells
+
+scallop_cell_size <- cellSize(
+  scallop_suitable_locations,
+  unit = "km"
+)
+
+# Only want the suitable cells
+
+scallop_suitable_area <-
+  scallop_suitable_locations * scallop_cell_size
+
+# Calculate suitable area by EEZ
+
+scallop_eez_suitable <- zonal(
+  scallop_suitable_area,
+  scallop_eez_rast,
+  fun = "sum",
+  na.rm = TRUE
+)
+
+# Rename suitable area column
+
+scallop_eez_suitable <- scallop_eez_suitable |>
+  rename(
+    suitable_km2 = lyr1
+  )
+
+# Join suitable area to EEZ polygons
+
+scallop_summary <- ez_data |>
+  left_join(scallop_eez_suitable, by = "rgn_id")
+
+# Check results
+
+head(scallop_summary)
+```
+
+## Scallop Map Creation 
+```{r}
+
+
+# Map creation
+
+scallop_map <- tm_basemap("OpenStreetMap") + 
+   tm_shape(scallop_summary) +
+  tm_polygons(
+    fill = "suitable_km2",
+    fill.scale = tm_scale_continuous(
+      values = "brewer.blues"
+    ),
+    fill_alpha = 0.6,
+    fill.legend = tm_legend(
+      title = "Suitable area (km²)",
+      position = tm_pos_out("right", "center")
+    ),
+    col = "black"
+  ) +
+  tm_graticules() +
+  tm_scalebar(position = c("left", "bottom"), text.size = 0.7) +
+  tm_compass(position = c("right", "top")) +
+  tm_title(
+    "Pacific Calico Scallop Suitability Analysis for West Coast EEZs", 
+    size = 1.5
+  )
+
+# Display map
+
+scallop_map
+
+```
+
+
+Scallop map interpretation: The Pacific Calico Scallop Suitability Map shows that there is no suitable habitat across the West Coast EEZs based on the selected temperature and depth criteria.
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
