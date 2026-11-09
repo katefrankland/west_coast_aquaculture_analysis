@@ -221,18 +221,61 @@ oyster_map <- tm_basemap("OpenStreetMap") +
     fill_alpha = 0.6,
     fill.legend = tm_legend(
       title = "Suitable area (km2)",
-      position = tm_pos_out("right", "center")
+      position = tm_pos_out("right", "center"),
+      width = 5, 
+      height = 5
     ),
     col = "black"
   ) +
   tm_graticules() +
   tm_scalebar(position = c("left", "bottom"), text.size = 0.7) + 
   tm_compass(position = c("right", "top")) +
-  tm_title("Oyster Suitability Analysis for West Coast EEZs", size = 1.5)
+  tm_title("Oyster Suitability Analysis for West Coast EEZs", size = 0.5)
+
+
 
 
 # Display map
 oyster_map
+
+```
+
+
+
+```{r}
+# Map creation
+
+#Create color values 
+
+pink_theme <- c("#eec0cd", "#f39bcc", "#e81ea4", "#a9074d")
+
+```
+
+
+```{r}
+oyster_map <- tm_basemap("OpenStreetMap") + 
+  tm_shape(ez_summary) + 
+  tm_polygons(
+    fill = "suitable_km2", 
+    fill.scale = tm_scale_continuous(values = pink_theme), 
+    fill_alpha = 0.6, 
+    fill.legend = tm_legend(
+      title = "Suitable area (km2)", 
+      position = tm_pos_out("right", "center"), 
+      width = 15, 
+      height = 15
+    ),
+    col = "black"
+  ) + 
+  tm_graticules() + 
+  tm_scalebar(position = c("left", "bottom"), text.size = 0.7) + 
+  tm_compass(position = c("right", "top")) + 
+  tm_options(components.autoscale = FALSE) + 
+  tm_title("Oyster Suitability Analysis for West Coast EEZs", size = 1)
+
+# Display map
+oyster_map
+
 ```
 
 
@@ -240,23 +283,23 @@ Oyster Map Interpretation: The oyster map shows suitable habitat across the West
 
 #__________________________________________________________________________________________________________
 
-## Suitability for the Pacific Calico Scallop 
+## Pacific Calico Scallop 
 
-- sealifebase link: https://www.sealifebase.ca/country/CountrySpeciesSummary.php?Country=US+America+%28contiguous+states%29&genusname=Argopecten&speciesname=ventricosus
+link: https://www.sealifebase.ca/Country/CountrySpeciesSummary.php?c_code=591&Genus=Argopecten&Species=ventricosus
 
 
 ```{r}
 
-# Suitability for the Pacific Calico Scallop
+# Suitability for the Pacific Calico Scallop 
 
-# Pacific calico scallop suitability parameters
+# Suitability parameters
 # Depth range: 0-180 meters below sea level
 
-# Reclassify SST for Pacific calico scallop
+# Reclassify SST for the CA mussel 
 
 scallop_sst_rcl <- matrix(
   c(
-    -Inf, 21, 0,       # Unsuitable
+    -Inf, -21, 0,       # Unsuitable
     21, 31, 1,         # Suitable
     31, Inf, 0         # Unsuitable
   ),
@@ -366,30 +409,30 @@ head(scallop_summary)
 
 ## Scallop Map Creation 
 ```{r}
+# Scallop color theme 
 
-
-# Map creation
+scallop_theme <- c("#f9d0f1", "#f6a8a8", "#cc5f5f", "#f9529a")
 
 scallop_map <- tm_basemap("OpenStreetMap") + 
-   tm_shape(scallop_summary) +
+  tm_shape(scallop_summary) + 
   tm_polygons(
-    fill = "suitable_km2",
-    fill.scale = tm_scale_continuous(
-      values = "brewer.blues"
-    ),
-    fill_alpha = 0.6,
+    fill = "suitable_km2", 
+    fill.scale = tm_scale_continuous(values = scallop_theme), 
+    fill_alpha = 0.6, 
     fill.legend = tm_legend(
-      title = "Suitable area (km²)",
-      position = tm_pos_out("right", "center")
+      title = "Suitable area (km2)", 
+      position = tm_pos_out("right", "center"), 
+      width = 15, 
+      height = 15
     ),
     col = "black"
-  ) +
-  tm_graticules() +
-  tm_scalebar(position = c("left", "bottom"), text.size = 0.7) +
-  tm_compass(position = c("right", "top")) +
-  tm_title(
-    "Pacific Calico Scallop Suitability Analysis for West Coast EEZs", 
-    size = 1.5
+  ) + 
+  tm_graticules() + 
+  tm_scalebar(position = c("left", "bottom"), text.size = 0.7) + 
+  tm_compass(position = c("right", "top")) + 
+  tm_options(components.autoscale = FALSE) + 
+  tm_title("Pacific Calico Scallop Suitability Analysis for West Coast EEZs", 
+    size = 0.5
   )
 
 # Display map
@@ -399,7 +442,7 @@ scallop_map
 ```
 
 
-Scallop map interpretation: The Pacific Calico Scallop Suitability Map shows that there is no suitable habitat across the West Coast EEZs based on the selected temperature and depth criteria.
+Scallop map interpretation: The Pacific Calico Scallop Suitability Map shows that there is suitable habitat across the West Coast EEZs based on the selected temperature and depth criteria. Southern California, Oregon, and parts of Washington state have habitat that meet the criteria for this scallop. 
  
 
 
